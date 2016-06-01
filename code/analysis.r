@@ -3,6 +3,8 @@ dplyr = modules::import_package('dplyr', attach = TRUE)
 tidyr = modules::import_package('tidyr')
 cu = modules::import('klmr/codons/codon_usage')
 
+dir.create('data', showWarnings = FALSE)
+
 valid_cds = function (cds) {
     n = nchar(cds)
     n > 0 &
