@@ -91,16 +91,19 @@ de_diff_d = de_diff_cu %>%
 # and this is also true for the codons of interest.
 
 # <http://stats.stackexchange.com/a/62653/3512>
-pred_interval = de_diff_d %>% filter(! Interesting) %>% .$`Fold change`
+pred_interval_d = de_diff_d %>% filter(! Interesting) %>% .$`Fold change`
 # Actually we know the population mean under the null hypothesis (= 0) but we
 # may as well estimate it from the data, and indeed it’s almost 0.
-pred_m = mean(pred_interval)
-pred_s = sd(pred_interval)
+pred_µ = mean(pred_interval_d)
+pred_σ = sd(pred_interval_d)
+λ = 3
+# P(|X - μ| ≥ λσ) ≤ 4/(9λ²)
+# → 1 - P > 0.95
 
 ggplot(de_diff_d) +
     aes(Codon, `Fold change`, fill = factor(Interesting, labels = c('Yes', 'No'))) +
     geom_bar(stat = 'identity', position = 'dodge') +
-    geom_hline(yintercept = pred_m + 3 * c(pred_s, -pred_s)) +
+    geom_hline(yintercept = pred_µ + λ * c(1, -1) * pred_σ) +
     annotate('text', label = '~95% prediction interval', x = 30, y = 0.007) +
     labs(fill = 'Codon of interest',
          title = 'Fold change for codons between FF and FS')
