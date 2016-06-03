@@ -92,6 +92,8 @@ de_diff_d = de_diff_cu %>%
 
 # <http://stats.stackexchange.com/a/62653/3512>
 pred_interval = de_diff_d %>% filter(! Interesting) %>% .$`Fold change`
+# Actually we know the population mean under the null hypothesis (= 0) but we
+# may as well estimate it from the data, and indeed it’s almost 0.
 pred_m = mean(pred_interval)
 pred_s = sd(pred_interval)
 
