@@ -100,10 +100,17 @@ pred_σ = sd(pred_interval_d)
 # P(|X - μ| ≥ λσ) ≤ 4/(9λ²)
 # → 1 - P > 0.95
 
+de_diff_d = de_diff_d %>%
+    mutate(p = pmin(1, 4 / (9 * (abs(`Fold change` - pred_µ) / pred_σ) ** 2)),
+           Significance = symnum(p, corr = FALSE,
+                                 cutpoints = c(0, 0.01, 0.05, 1),
+                                 symbols = c('**', '*', ' ')) %>% as.character)
+
 ggplot(de_diff_d) +
     aes(Codon, `Fold change`, fill = factor(Interesting, labels = c('Yes', 'No'))) +
     geom_bar(stat = 'identity', position = 'dodge') +
     geom_hline(yintercept = pred_µ + λ * c(1, -1) * pred_σ) +
     annotate('text', label = '~95% prediction interval', x = 30, y = 0.007) +
+    geom_text(aes(label = Significance), vjust = 1.5) +
     labs(fill = 'Codon of interest',
          title = 'Fold change for codons between FF and FS')
