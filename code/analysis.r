@@ -87,6 +87,9 @@ de_diff_d = de_diff_cu %>%
     tidyr$spread(Which, Value) %>%
     mutate(`Fold change` = FF - FS, magnitude = abs(`Fold change`))
 
+# H0: codon usage varies randomly between highly expressed genes in FF and FS,
+# and this is also true for the codons of interest.
+
 # <http://stats.stackexchange.com/a/62653/3512>
 pred_interval = de_diff_d %>% filter(! Interesting) %>% .$`Fold change`
 pred_m = mean(pred_interval)
