@@ -96,12 +96,13 @@ pred_interval_d = de_diff_d %>% filter(! Interesting) %>% .$`Fold change`
 # may as well estimate it from the data, and indeed it’s almost 0.
 pred_µ = mean(pred_interval_d)
 pred_σ = sd(pred_interval_d)
-λ = 3
-# P(|X - μ| ≥ λσ) ≤ 4/(9λ²)
+λ_95 = 3
+# P(|X - μ| ≥ λσ) ≤ 4/(9λ²) for λ > √(8/3)
 # → 1 - P > 0.95
 
 de_diff_d = de_diff_d %>%
-    mutate(p = pmin(1, 4 / (9 * (abs(`Fold change` - pred_µ) / pred_σ) ** 2)),
+    mutate(λ = abs(`Fold change` - pred_µ) / pred_σ,
+           p = ifelse(λ > sqrt(8 / 3), 4 / (9 * λ ^ 2), 1),
            Significance = symnum(p, corr = FALSE,
                                  cutpoints = c(0, 0.01, 0.05, 1),
                                  symbols = c('**', '*', ' ')) %>% as.character)
@@ -109,7 +110,7 @@ de_diff_d = de_diff_d %>%
 ggplot(de_diff_d) +
     aes(Codon, `Fold change`, fill = factor(Interesting, labels = c('Yes', 'No'))) +
     geom_bar(stat = 'identity', position = 'dodge') +
-    geom_hline(yintercept = pred_µ + λ * c(1, -1) * pred_σ) +
+    geom_hline(yintercept = pred_µ + λ_95 * c(1, -1) * pred_σ) +
     annotate('text', label = '~95% prediction interval', x = 30, y = 0.007) +
     geom_text(aes(label = Significance), vjust = 1.5) +
     labs(fill = 'Codon of interest',
