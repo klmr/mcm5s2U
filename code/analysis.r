@@ -22,6 +22,7 @@ load_counts = function (file) {
 }
 
 starvation_data = load_counts('raw-data/deseq_WS220_genes_RNA_FF-vs-FS.txt')
+heatshock_data = load_counts('raw-data/deseq_WS220_genes_RNA_FF-vs-37C.txt')
 
 load_cds = function () {
     path = 'data/cds.rds'
