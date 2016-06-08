@@ -14,11 +14,14 @@ valid_cds = function (cds) {
         substr(cds, n - 2, n) %in% cu$stop_codons
 }
 
-deseq_data = io$read_table('raw-data/deseq_WS220_genes_RNA_FF-vs-FS.txt',
-                           header = TRUE, sep = ',', row.names = 1)
+load_counts = function (file) {
+    data = io$read_table(file, header = TRUE, sep = ',', row.names = 1)
+    colnames(data) = gsub('_STAR_WS220\\.mis2\\.map10\\.bam', '',
+                                gsub('.*RNA_', '', colnames(data)))
+    data
+}
 
-colnames(deseq_data) = gsub('_STAR_WS220\\.mis2\\.map10\\.bam', '',
-                            gsub('.*RNA_', '', colnames(deseq_data)))
+starvation_data = load_counts('raw-data/deseq_WS220_genes_RNA_FF-vs-FS.txt')
 
 load_cds = function () {
     path = 'data/cds.rds'
@@ -49,7 +52,7 @@ coding_sequences = cds %>%
 
 cds_cu = cu$cu(coding_sequences)
 
-counts_vsd = deseq_data %>%
+counts_vsd = starvation_data %>%
     select(Gene, matches('-vsd$')) %>%
     `colnames<-`(sub('-vsd', '', colnames(.))) %>%
     rowwise() %>%
@@ -63,7 +66,7 @@ mcm5s2U_codons = io$read_table('raw-data/mcm5s2U-codons.tsv')$V2
 modules::import_package('ggplot2', attach = TRUE)
 theme_set(theme_bw())
 
-de = deseq_data %>%
+de = starvation_data %>%
     filter(padj < 0.01) %>%
     mutate(Which = ifelse(log2FoldChange < 0, 'FF', 'FS')) %>%
     inner_join(counts_vsd, by = 'Gene') %>%
