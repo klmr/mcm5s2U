@@ -73,12 +73,16 @@ mcm5s2U_codons = io$read_table('raw-data/mcm5s2U-codons.tsv')$V2
 modules::import_package('ggplot2', attach = TRUE)
 theme_set(theme_bw())
 
-starvation_de = starvation_data %>%
+filter_de_genes = function (data)
+    data %>%
     filter(padj < 0.01) %>%
     mutate(Which = ifelse(log2FoldChange < 0, 'Control', 'Treatment')) %>%
     inner_join(starvation_vsd, by = 'Gene') %>%
     mutate(Value = ifelse(Which == 'Control', Control, Treatment)) %>%
     select(Gene, Which, Value)
+
+starvation_de = filter_de_genes(starvation_data)
+heatshock_de = filter_de_genes(heatshock_data)
 
 de_diff_cu = inner_join(cds_cu, starvation_de, by = 'Gene') %>%
     mutate(Value = CU * Value) %>%
