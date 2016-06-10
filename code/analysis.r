@@ -96,7 +96,14 @@ codon_usage_summary = function (de_data)
 starvation_de_cu = codon_usage_summary(starvation_de)
 heatshock_de_cu= codon_usage_summary(heatshock_de)
 
-ggplot(de_diff_cu) +
+#+ starvation-de-codon-usage
+ggplot(starvation_de_cu) +
+    aes(Codon, Value, fill = Which, alpha = Interesting) +
+    scale_alpha_discrete(range = c(0.5, 1)) +
+    geom_bar(stat = 'identity', position = 'dodge')
+
+#+ heatshock-de-codon-usage
+ggplot(heatshock_de_cu) +
     aes(Codon, Value, fill = Which, alpha = Interesting) +
     scale_alpha_discrete(range = c(0.5, 1)) +
     geom_bar(stat = 'identity', position = 'dodge')
