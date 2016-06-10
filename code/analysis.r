@@ -16,8 +16,10 @@ valid_cds = function (cds) {
 
 load_counts = function (file) {
     data = io$read_table(file, header = TRUE, sep = ',', row.names = 1)
-    colnames(data) = gsub('_STAR_WS220\\.mis2\\.map10\\.bam', '',
-                                gsub('.*RNA_', '', colnames(data)))
+    colnames(data) = sub('_STAR_WS220\\.mis2\\.map10\\.bam', '',
+                                sub('.*RNA_', '', colnames(data)))
+    colnames(data) = sub('FF', 'Control', colnames(data))
+    colnames(data) = sub('FS|37C', 'Treatment', colnames(data))
     data
 }
 
@@ -57,24 +59,24 @@ counts_vsd = starvation_data %>%
     select(Gene, matches('-vsd$')) %>%
     `colnames<-`(sub('-vsd', '', colnames(.))) %>%
     rowwise() %>%
-    mutate(FF = mean(FF.1, FF.2, FF.3),
-           FS = mean(FS.1, FS.2, FS.3)) %>%
+    mutate(Control = mean(Control.1, Control.2, Control.3),
+           Treatment = mean(Treatment.1, Treatment.2, Treatment.3)) %>%
     ungroup() %>%
-    select(Gene, FF, FS)
+    select(Gene, Control, Treatment)
 
 mcm5s2U_codons = io$read_table('raw-data/mcm5s2U-codons.tsv')$V2
 
 modules::import_package('ggplot2', attach = TRUE)
 theme_set(theme_bw())
 
-de = starvation_data %>%
+starvation_de = starvation_data %>%
     filter(padj < 0.01) %>%
-    mutate(Which = ifelse(log2FoldChange < 0, 'FF', 'FS')) %>%
-    inner_join(counts_vsd, by = 'Gene') %>%
-    mutate(Value = ifelse(Which == 'FF', FF, FS)) %>%
+    mutate(Which = ifelse(log2FoldChange < 0, 'Control', 'Treatment')) %>%
+    inner_join(starvation_vsd, by = 'Gene') %>%
+    mutate(Value = ifelse(Which == 'Control', Control, Treatment)) %>%
     select(Gene, Which, Value)
 
-de_diff_cu = inner_join(cds_cu, de, by = 'Gene') %>%
+de_diff_cu = inner_join(cds_cu, starvation_de, by = 'Gene') %>%
     mutate(Value = CU * Value) %>%
     group_by(Which, Codon) %>%
     summarize(Value = sum(Value)) %>%
@@ -89,13 +91,13 @@ ggplot(de_diff_cu) +
 
 de_diff_d = de_diff_cu %>%
     tidyr$spread(Which, Value) %>%
-    mutate(`Fold change` = FF - FS, magnitude = abs(`Fold change`))
+    mutate(Difference = Treatment - Control, magnitude = abs(Difference))
 
 # H0: codon usage varies randomly between highly expressed genes in FF and FS,
 # and this is also true for the codons of interest.
 
 # <http://stats.stackexchange.com/a/62653/3512>
-pred_interval_d = de_diff_d %>% filter(! Interesting) %>% .$`Fold change`
+pred_interval_d = de_diff_d %>% filter(! Interesting) %>% .$Difference
 # Actually we know the population mean under the null hypothesis (= 0) but we
 # may as well estimate it from the data, and indeed it’s almost 0.
 pred_µ = mean(pred_interval_d)
@@ -105,17 +107,17 @@ pred_σ = sd(pred_interval_d)
 # → 1 - P > 0.95
 
 de_diff_d = de_diff_d %>%
-    mutate(λ = abs(`Fold change` - pred_µ) / pred_σ,
+    mutate(λ = abs(Difference - pred_µ) / pred_σ,
            p = ifelse(λ > sqrt(8 / 3), 4 / (9 * λ ^ 2), 1),
            Significance = symnum(p, corr = FALSE,
                                  cutpoints = c(0, 0.01, 0.05, 1),
                                  symbols = c('**', '*', ' ')) %>% as.character)
 
 ggplot(de_diff_d) +
-    aes(Codon, `Fold change`, fill = factor(Interesting, labels = c('Yes', 'No'))) +
+    aes(Codon, Difference, fill = factor(Interesting, labels = c('Yes', 'No'))) +
     geom_bar(stat = 'identity', position = 'dodge') +
     geom_hline(yintercept = pred_µ + λ_95 * c(1, -1) * pred_σ) +
     annotate('text', label = '~95% prediction interval', x = 30, y = 0.007) +
     geom_text(aes(label = Significance), vjust = 1.5) +
     labs(fill = 'Codon of interest',
-         title = 'Fold change for codons between FF and FS')
+         title = 'Difference in codon usage between Control and Treatment')
