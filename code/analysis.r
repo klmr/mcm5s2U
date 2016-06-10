@@ -94,7 +94,7 @@ codon_usage_summary = function (de_data)
     mutate(Interesting = Codon %in% mcm5s2U_codons)
 
 starvation_de_cu = codon_usage_summary(starvation_de)
-heatshock_de_cu= codon_usage_summary(heatshock_de)
+heatshock_de_cu = codon_usage_summary(heatshock_de)
 
 #+ starvation-de-codon-usage
 ggplot(starvation_de_cu) +
