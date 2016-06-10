@@ -108,34 +108,46 @@ ggplot(heatshock_de_cu) +
     scale_alpha_discrete(range = c(0.5, 1)) +
     geom_bar(stat = 'identity', position = 'dodge')
 
-de_diff_d = de_diff_cu %>%
+starvation_diff = starvation_de_cu %>%
     tidyr$spread(Which, Value) %>%
-    mutate(Difference = Treatment - Control, magnitude = abs(Difference))
+    mutate(Difference = Treatment - Control)
+
+heatshock_diff = heatshock_de_cu %>%
+    tidyr$spread(Which, Value) %>%
+    mutate(Difference = Treatment - Control)
 
 # H0: codon usage varies randomly between highly expressed genes in FF and FS,
 # and this is also true for the codons of interest.
 
-# <http://stats.stackexchange.com/a/62653/3512>
-pred_interval_d = de_diff_d %>% filter(! Interesting) %>% .$Difference
-# Actually we know the population mean under the null hypothesis (= 0) but we
-# may as well estimate it from the data, and indeed it’s almost 0.
-pred_µ = mean(pred_interval_d)
-pred_σ = sd(pred_interval_d)
 λ_95 = 3
-# P(|X - μ| ≥ λσ) ≤ 4/(9λ²) for λ > √(8/3)
-# → 1 - P > 0.95
 
-de_diff_d = de_diff_d %>%
-    mutate(λ = abs(Difference - pred_µ) / pred_σ,
+test_enrichment = function (de_diff_d) {
+    # <http://stats.stackexchange.com/a/62653/3512>
+    pred_interval_d = de_diff_d %>% filter(! Interesting) %>% .$Difference
+    # P(|X - μ| ≥ λσ) ≤ 4/(9λ²) for λ > √(8/3)
+    # → 1 - P > 0.95
+
+    # Actually we know the population mean under the null hypothesis (= 0) but we
+    # may as well estimate it from the data, and indeed it’s almost 0.
+    de_diff_d %>%
+    mutate(pred_µ = mean(pred_interval_d),
+           pred_σ = sd(pred_interval_d),
+           λ = abs(Difference - pred_µ) / pred_σ,
            p = ifelse(λ > sqrt(8 / 3), 4 / (9 * λ ^ 2), 1),
            Significance = symnum(p, corr = FALSE,
                                  cutpoints = c(0, 0.01, 0.05, 1),
                                  symbols = c('**', '*', ' ')) %>% as.character)
+}
 
-ggplot(de_diff_d) +
+starvation_enrichment = test_enrichment(starvation_diff)
+heatshock_enrichment = test_enrichment(heatshock_diff)
+
+#+ starvation-enrichment
+ggplot(starvation_enrichment) +
+
     aes(Codon, Difference, fill = factor(Interesting, labels = c('Yes', 'No'))) +
     geom_bar(stat = 'identity', position = 'dodge') +
-    geom_hline(yintercept = pred_µ + λ_95 * c(1, -1) * pred_σ) +
+    geom_hline(aes(yintercept = pred_µ + λ_95 * c(1, -1) * pred_σ)) +
     annotate('text', label = '~95% prediction interval', x = 30, y = 0.007) +
     geom_text(aes(label = Significance), vjust = 1.5) +
     labs(fill = 'Codon of interest',
