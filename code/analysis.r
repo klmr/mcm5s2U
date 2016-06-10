@@ -55,7 +55,8 @@ coding_sequences = cds %>%
 
 cds_cu = cu$cu(coding_sequences)
 
-counts_vsd = starvation_data %>%
+aggregate_vsd = function (data)
+    data %>%
     select(Gene, matches('-vsd$')) %>%
     `colnames<-`(sub('-vsd', '', colnames(.))) %>%
     rowwise() %>%
@@ -63,6 +64,9 @@ counts_vsd = starvation_data %>%
            Treatment = mean(Treatment.1, Treatment.2, Treatment.3)) %>%
     ungroup() %>%
     select(Gene, Control, Treatment)
+
+starvation_vsd = aggregate_vsd(starvation_data)
+heatshock_vsd = aggregate_vsd(heatshock_data)
 
 mcm5s2U_codons = io$read_table('raw-data/mcm5s2U-codons.tsv')$V2
 
