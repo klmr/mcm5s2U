@@ -147,6 +147,15 @@ ggplot(starvation_enrichment) +
     aes(Codon, Difference, fill = factor(Interesting, labels = c('Yes', 'No'))) +
     geom_bar(stat = 'identity', position = 'dodge') +
     geom_hline(aes(yintercept = pred_µ + λ_95 * c(1, -1) * pred_σ)) +
+    annotate('text', label = '~95% prediction interval', x = 25, y = 0.008) +
+    geom_text(aes(label = Significance), vjust = -0.5) +
+    labs(fill = 'Codon of interest')
+
+#+ heatshock-enrichment
+ggplot(heatshock_enrichment) +
+    aes(Codon, Difference, fill = factor(Interesting, labels = c('Yes', 'No'))) +
+    geom_bar(stat = 'identity', position = 'dodge') +
+    geom_hline(aes(yintercept = pred_µ + λ_95 * c(1, -1) * pred_σ)) +
     annotate('text', label = '~95% prediction interval', x = 30, y = 0.007) +
     geom_text(aes(label = Significance), vjust = -0.5) +
     labs(fill = 'Codon of interest')
