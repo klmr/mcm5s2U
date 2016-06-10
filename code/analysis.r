@@ -84,13 +84,17 @@ filter_de_genes = function (data)
 starvation_de = filter_de_genes(starvation_data)
 heatshock_de = filter_de_genes(heatshock_data)
 
-de_diff_cu = inner_join(cds_cu, starvation_de, by = 'Gene') %>%
+codon_usage_summary = function (de_data)
+    inner_join(cds_cu, de_data, by = 'Gene') %>%
     mutate(Value = CU * Value) %>%
     group_by(Which, Codon) %>%
     summarize(Value = sum(Value)) %>%
     mutate(Value = Value / sum(Value)) %>%
     ungroup() %>%
     mutate(Interesting = Codon %in% mcm5s2U_codons)
+
+starvation_de_cu = codon_usage_summary(starvation_de)
+heatshock_de_cu= codon_usage_summary(heatshock_de)
 
 ggplot(de_diff_cu) +
     aes(Codon, Value, fill = Which, alpha = Interesting) +
