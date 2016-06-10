@@ -1,3 +1,7 @@
+#+ echo=FALSE
+knitr::opts_chunk$set(cache = TRUE, dev = c('png', 'pdf'))
+
+#+ echo=TRUE
 io = modules::import('ebi-predocs/ebits/io')
 dplyr = modules::import_package('dplyr', attach = TRUE)
 tidyr = modules::import_package('tidyr')
@@ -64,6 +68,7 @@ aggregate_vsd = function (data)
            Treatment = mean(Treatment.1, Treatment.2, Treatment.3)) %>%
     ungroup() %>%
     select(Gene, Control, Treatment)
+# FIXME: Estimate variance, and use in calculation of statistic below.
 
 starvation_vsd = aggregate_vsd(starvation_data)
 heatshock_vsd = aggregate_vsd(heatshock_data)
@@ -96,13 +101,13 @@ codon_usage_summary = function (de_data)
 starvation_de_cu = codon_usage_summary(starvation_de)
 heatshock_de_cu = codon_usage_summary(heatshock_de)
 
-#+ starvation-de-codon-usage
+#+ starvation-de-codon-usage, fig.width=20
 ggplot(starvation_de_cu) +
     aes(Codon, Value, fill = Which, alpha = Interesting) +
     scale_alpha_discrete(range = c(0.5, 1)) +
     geom_bar(stat = 'identity', position = 'dodge')
 
-#+ heatshock-de-codon-usage
+#+ heatshock-de-codon-usage, fig.width=20
 ggplot(heatshock_de_cu) +
     aes(Codon, Value, fill = Which, alpha = Interesting) +
     scale_alpha_discrete(range = c(0.5, 1)) +
@@ -142,20 +147,20 @@ test_enrichment = function (de_diff_d) {
 starvation_enrichment = test_enrichment(starvation_diff)
 heatshock_enrichment = test_enrichment(heatshock_diff)
 
-#+ starvation-enrichment
+#+ starvation-enrichment, fig.width=20
 ggplot(starvation_enrichment) +
-    aes(Codon, Difference, fill = factor(Interesting, labels = c('Yes', 'No'))) +
+    aes(Codon, Difference, fill = factor(Interesting, labels = c('mcm5s2U', 'rest'))) +
     geom_bar(stat = 'identity', position = 'dodge') +
     geom_hline(aes(yintercept = pred_µ + λ_95 * c(1, -1) * pred_σ)) +
     annotate('text', label = '~95% prediction interval', x = 25, y = 0.008) +
     geom_text(aes(label = Significance), vjust = -0.5) +
-    labs(fill = 'Codon of interest')
+    labs(fill = 'Codon type', y = 'Difference between FF and FS')
 
-#+ heatshock-enrichment
+#+ heatshock-enrichment, fig.width=20
 ggplot(heatshock_enrichment) +
-    aes(Codon, Difference, fill = factor(Interesting, labels = c('Yes', 'No'))) +
+    aes(Codon, Difference, fill = factor(Interesting, labels = c('mcm5s2U', 'rest'))) +
     geom_bar(stat = 'identity', position = 'dodge') +
     geom_hline(aes(yintercept = pred_µ + λ_95 * c(1, -1) * pred_σ)) +
     annotate('text', label = '~95% prediction interval', x = 30, y = 0.007) +
     geom_text(aes(label = Significance), vjust = -0.5) +
-    labs(fill = 'Codon of interest')
+    labs(fill = 'Codon type', y = 'Difference, between FF and 37°C')
