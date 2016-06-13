@@ -1,5 +1,5 @@
 #+ echo=FALSE
-knitr::opts_chunk$set(cache = TRUE, dev = c('png', 'pdf'))
+knitr::opts_chunk$set(dev = c('png', 'pdf'))
 
 #+ echo=TRUE
 io = modules::import('ebi-predocs/ebits/io')
