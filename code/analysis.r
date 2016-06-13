@@ -147,11 +147,16 @@ test_enrichment = function (de_diff_d) {
 starvation_enrichment = test_enrichment(starvation_diff)
 heatshock_enrichment = test_enrichment(heatshock_diff)
 
+interval_lines = function (data)
+    # WTF? R 3.3.0 doesn’t accept `data$pred_µ` nor ``data$`pred_µ```, but does
+    # accept `data$'pred_µ'`.
+    geom_hline(yintercept = first(data$'pred_µ') + λ_95 * c(1, -1) * first(data$'pred_σ'))
+
 #+ starvation-enrichment, fig.width=20
 ggplot(starvation_enrichment) +
     aes(Codon, Difference, fill = factor(Interesting, labels = c('mcm5s2U', 'rest'))) +
     geom_bar(stat = 'identity', position = 'dodge') +
-    geom_hline(aes(yintercept = pred_µ + λ_95 * c(1, -1) * pred_σ)) +
+    interval_lines(starvation_enrichment) +
     annotate('text', label = '~95% prediction interval', x = 25, y = 0.008) +
     geom_text(aes(label = Significance), vjust = -0.5) +
     labs(fill = 'Codon type', y = 'Difference between FF and FS')
@@ -160,7 +165,7 @@ ggplot(starvation_enrichment) +
 ggplot(heatshock_enrichment) +
     aes(Codon, Difference, fill = factor(Interesting, labels = c('mcm5s2U', 'rest'))) +
     geom_bar(stat = 'identity', position = 'dodge') +
-    geom_hline(aes(yintercept = pred_µ + λ_95 * c(1, -1) * pred_σ)) +
+    interval_lines(heatshock_enrichment) +
     annotate('text', label = '~95% prediction interval', x = 30, y = 0.007) +
     geom_text(aes(label = Significance), vjust = -0.5) +
     labs(fill = 'Codon type', y = 'Difference, between FF and 37°C')
