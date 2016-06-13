@@ -178,13 +178,21 @@ plot_summary = function (data) {
                               levels = c('AAA', 'GAA', 'CAA', 'rest'),
                               ordered = TRUE))
 
+    distr = filter(data, ! Interesting)$Difference
+    mean = mean(distr)
+    sd = sd(distr)
+
     ggplot(data) +
         aes(Codon, Difference) +
         geom_blank() +
         geom_bar(data = filter(data, Codon != 'rest'),
                  stat = 'identity', position = 'dodge', width = 0.5) +
         geom_boxplot(data = filter(data, Codon == 'rest'),
-                     size = 1.2, width = 0.75)
+                     size = 1.2, width = 0.75) +
+        geom_hline(aes(yintercept = Limit, color = Limits),
+                   data = data_frame(Limit = mean + lambda * c(1, -1) * sd,
+                                     Limits = '95% prediction interval'),
+                   linetype = 'dashed', show.legend = TRUE)
 }
 
 #+ starvation-enrichment-summary
