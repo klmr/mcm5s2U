@@ -195,8 +195,8 @@ plot_summary = function (data) {
                    linetype = 'dashed', show.legend = TRUE)
 }
 
-#+ starvation-enrichment-summary
+#+ starvation-enrichment-summary, fig.width = 6, fig.height = 4
 plot_summary(starvation_enrichment)
 
-#+ heatshock-enrichment-summary
+#+ heatshock-enrichment-summary, fig.width = 6, fig.height = 4
 plot_summary(heatshock_enrichment)
