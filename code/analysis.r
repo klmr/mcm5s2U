@@ -1,3 +1,7 @@
+#+ echo=FALSE
+knitr::opts_chunk$set(dev = c('png', 'pdf'))
+
+#+ echo=TRUE
 io = modules::import('ebi-predocs/ebits/io')
 dplyr = modules::import_package('dplyr', attach = TRUE)
 tidyr = modules::import_package('tidyr')
@@ -14,11 +18,17 @@ valid_cds = function (cds) {
         substr(cds, n - 2, n) %in% cu$stop_codons
 }
 
-deseq_data = io$read_table('raw-data/deseq_WS220_genes_RNA_FF-vs-FS.txt',
-                           header = TRUE, sep = ',', row.names = 1)
+load_counts = function (file) {
+    data = io$read_table(file, header = TRUE, sep = ',', row.names = 1)
+    colnames(data) = sub('_STAR_WS220\\.mis2\\.map10\\.bam', '',
+                                sub('.*RNA_', '', colnames(data)))
+    colnames(data) = sub('FF', 'Control', colnames(data))
+    colnames(data) = sub('FS|37C', 'Treatment', colnames(data))
+    data
+}
 
-colnames(deseq_data) = gsub('_STAR_WS220\\.mis2\\.map10\\.bam', '',
-                            gsub('.*RNA_', '', colnames(deseq_data)))
+starvation_data = load_counts('raw-data/deseq_WS220_genes_RNA_FF-vs-FS.txt')
+heatshock_data = load_counts('raw-data/deseq_WS220_genes_RNA_FF-vs-37C.txt')
 
 load_cds = function () {
     path = 'data/cds.rds'
@@ -49,28 +59,38 @@ coding_sequences = cds %>%
 
 cds_cu = cu$cu(coding_sequences)
 
-counts_vsd = deseq_data %>%
+aggregate_vsd = function (data)
+    data %>%
     select(Gene, matches('-vsd$')) %>%
     `colnames<-`(sub('-vsd', '', colnames(.))) %>%
     rowwise() %>%
-    mutate(FF = mean(FF.1, FF.2, FF.3),
-           FS = mean(FS.1, FS.2, FS.3)) %>%
+    mutate(Control = mean(Control.1, Control.2, Control.3),
+           Treatment = mean(Treatment.1, Treatment.2, Treatment.3)) %>%
     ungroup() %>%
-    select(Gene, FF, FS)
+    select(Gene, Control, Treatment)
+# FIXME: Estimate variance, and use in calculation of statistic below.
+
+starvation_vsd = aggregate_vsd(starvation_data)
+heatshock_vsd = aggregate_vsd(heatshock_data)
 
 mcm5s2U_codons = io$read_table('raw-data/mcm5s2U-codons.tsv')$V2
 
 modules::import_package('ggplot2', attach = TRUE)
 theme_set(theme_bw())
 
-de = deseq_data %>%
+filter_de_genes = function (data)
+    data %>%
     filter(padj < 0.01) %>%
-    mutate(Which = ifelse(log2FoldChange < 0, 'FF', 'FS')) %>%
-    inner_join(counts_vsd, by = 'Gene') %>%
-    mutate(Value = ifelse(Which == 'FF', FF, FS)) %>%
+    mutate(Which = ifelse(log2FoldChange < 0, 'Control', 'Treatment')) %>%
+    inner_join(starvation_vsd, by = 'Gene') %>%
+    mutate(Value = ifelse(Which == 'Control', Control, Treatment)) %>%
     select(Gene, Which, Value)
 
-de_diff_cu = inner_join(cds_cu, de, by = 'Gene') %>%
+starvation_de = filter_de_genes(starvation_data)
+heatshock_de = filter_de_genes(heatshock_data)
+
+codon_usage_summary = function (de_data)
+    inner_join(cds_cu, de_data, by = 'Gene') %>%
     mutate(Value = CU * Value) %>%
     group_by(Which, Codon) %>%
     summarize(Value = sum(Value)) %>%
@@ -78,39 +98,93 @@ de_diff_cu = inner_join(cds_cu, de, by = 'Gene') %>%
     ungroup() %>%
     mutate(Interesting = Codon %in% mcm5s2U_codons)
 
-ggplot(de_diff_cu) +
+starvation_de_cu = codon_usage_summary(starvation_de)
+heatshock_de_cu = codon_usage_summary(heatshock_de)
+
+#+ starvation-de-codon-usage, fig.width=20
+ggplot(starvation_de_cu) +
     aes(Codon, Value, fill = Which, alpha = Interesting) +
     scale_alpha_discrete(range = c(0.5, 1)) +
     geom_bar(stat = 'identity', position = 'dodge')
 
-de_diff_d = de_diff_cu %>%
+#+ heatshock-de-codon-usage, fig.width=20
+ggplot(heatshock_de_cu) +
+    aes(Codon, Value, fill = Which, alpha = Interesting) +
+    scale_alpha_discrete(range = c(0.5, 1)) +
+    geom_bar(stat = 'identity', position = 'dodge')
+
+starvation_diff = starvation_de_cu %>%
     tidyr$spread(Which, Value) %>%
-    mutate(`Fold change` = FF - FS, magnitude = abs(`Fold change`))
+    mutate(Difference = Treatment - Control)
+
+heatshock_diff = heatshock_de_cu %>%
+    tidyr$spread(Which, Value) %>%
+    mutate(Difference = Treatment - Control)
 
 # H0: codon usage varies randomly between highly expressed genes in FF and FS,
 # and this is also true for the codons of interest.
 
-# <http://stats.stackexchange.com/a/62653/3512>
-pred_interval_d = de_diff_d %>% filter(! Interesting) %>% .$`Fold change`
-# Actually we know the population mean under the null hypothesis (= 0) but we
-# may as well estimate it from the data, and indeed it’s almost 0.
-pred_µ = mean(pred_interval_d)
-pred_σ = sd(pred_interval_d)
-λ = 3
-# P(|X - μ| ≥ λσ) ≤ 4/(9λ²)
-# → 1 - P > 0.95
+lambda = 3
 
-de_diff_d = de_diff_d %>%
-    mutate(p = pmin(1, 4 / (9 * (abs(`Fold change` - pred_µ) / pred_σ) ** 2)),
+test_enrichment = function (de_diff_d) {
+    # <http://stats.stackexchange.com/a/62653/3512>
+    pred_interval_d = de_diff_d %>% filter(! Interesting) %>% .$Difference
+    # P(|X - μ| ≥ λσ) ≤ 4/(9λ²) for λ > √(8/3)
+    # → 1 - P > 0.95
+
+    # Actually we know the population mean under the null hypothesis (= 0) but we
+    # may as well estimate it from the data, and indeed it’s almost 0.
+    de_diff_d %>%
+    mutate(mean = mean(pred_interval_d),
+           sd = sd(pred_interval_d),
+           λ = abs(Difference - mean) / sd,
+           p = ifelse(λ > sqrt(8 / 3), 4 / (9 * λ ^ 2), 1),
            Significance = symnum(p, corr = FALSE,
                                  cutpoints = c(0, 0.01, 0.05, 1),
                                  symbols = c('**', '*', ' ')) %>% as.character)
+}
 
-ggplot(de_diff_d) +
-    aes(Codon, `Fold change`, fill = factor(Interesting, labels = c('Yes', 'No'))) +
+starvation_enrichment = test_enrichment(starvation_diff)
+heatshock_enrichment = test_enrichment(heatshock_diff)
+
+interval_lines = function (data)
+    geom_hline(yintercept = first(data$mean) + lambda * c(1, -1) * first(data$sd))
+
+#+ starvation-enrichment, fig.width=20
+ggplot(starvation_enrichment) +
+    aes(Codon, Difference, fill = factor(Interesting, labels = c('mcm5s2U', 'rest'))) +
     geom_bar(stat = 'identity', position = 'dodge') +
-    geom_hline(yintercept = pred_µ + λ * c(1, -1) * pred_σ) +
+    interval_lines(starvation_enrichment) +
+    annotate('text', label = '~95% prediction interval', x = 25, y = 0.008) +
+    geom_text(aes(label = Significance), vjust = -0.5) +
+    labs(fill = 'Codon type', y = 'Difference between FF and FS')
+
+#+ heatshock-enrichment, fig.width=20
+ggplot(heatshock_enrichment) +
+    aes(Codon, Difference, fill = factor(Interesting, labels = c('mcm5s2U', 'rest'))) +
+    geom_bar(stat = 'identity', position = 'dodge') +
+    interval_lines(heatshock_enrichment) +
     annotate('text', label = '~95% prediction interval', x = 30, y = 0.007) +
-    geom_text(aes(label = Significance), vjust = 1.5) +
-    labs(fill = 'Codon of interest',
-         title = 'Fold change for codons between FF and FS')
+    geom_text(aes(label = Significance), vjust = -0.5) +
+    labs(fill = 'Codon type', y = 'Difference, between FF and 37°C')
+
+## Summarise the plots for easier digestion.
+
+plot_summary = function (data) {
+    data = data %>%
+        mutate(Codon = ifelse(Codon %in% mcm5s2U_codons, Codon, 'rest'))
+
+    ggplot(data) +
+        aes(Codon, Difference) +
+        geom_blank() +
+        geom_bar(data = filter(data, Codon != 'rest'),
+                 stat = 'identity', position = 'dodge', width = 0.5) +
+        geom_boxplot(data = filter(data, Codon == 'rest'),
+                     size = 1.2, width = 0.75)
+}
+
+#+ starvation-enrichment-summary
+plot_summary(starvation_enrichment)
+
+#+ heatshock-enrichment-summary
+plot_summary(heatshock_enrichment)
