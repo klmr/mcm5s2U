@@ -175,7 +175,7 @@ plot_summary = function (data) {
         mutate(Codon = ifelse(Codon %in% mcm5s2U_codons, Codon, 'rest'))
 
     ggplot(data) +
-        aes(x = Codon, y = Difference) +
+        aes(Codon, Difference) +
         geom_blank() +
         geom_bar(data = filter(data, Codon != 'rest'),
                  stat = 'identity', position = 'dodge', width = 0.5) +
