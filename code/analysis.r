@@ -167,3 +167,24 @@ ggplot(heatshock_enrichment) +
     annotate('text', label = '~95% prediction interval', x = 30, y = 0.007) +
     geom_text(aes(label = Significance), vjust = -0.5) +
     labs(fill = 'Codon type', y = 'Difference, between FF and 37°C')
+
+## Summarise the plots for easier digestion.
+
+plot_summary = function (data) {
+    data = data %>%
+        mutate(Codon = ifelse(Codon %in% mcm5s2U_codons, Codon, 'rest'))
+
+    ggplot(data) +
+        aes(x = Codon, y = Difference) +
+        geom_blank() +
+        geom_bar(data = filter(data, Codon != 'rest'),
+                 stat = 'identity', position = 'dodge', width = 0.5) +
+        geom_boxplot(data = filter(data, Codon == 'rest'),
+                     size = 1.2, width = 0.75)
+}
+
+#+ starvation-enrichment-summary
+plot_summary(starvation_enrichment)
+
+#+ heatshock-enrichment-summary
+plot_summary(heatshock_enrichment)
