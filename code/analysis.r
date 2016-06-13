@@ -124,7 +124,7 @@ heatshock_diff = heatshock_de_cu %>%
 # H0: codon usage varies randomly between highly expressed genes in FF and FS,
 # and this is also true for the codons of interest.
 
-λ_95 = 3
+lambda = 3
 
 test_enrichment = function (de_diff_d) {
     # <http://stats.stackexchange.com/a/62653/3512>
@@ -135,9 +135,9 @@ test_enrichment = function (de_diff_d) {
     # Actually we know the population mean under the null hypothesis (= 0) but we
     # may as well estimate it from the data, and indeed it’s almost 0.
     de_diff_d %>%
-    mutate(pred_µ = mean(pred_interval_d),
-           pred_σ = sd(pred_interval_d),
-           λ = abs(Difference - pred_µ) / pred_σ,
+    mutate(mean = mean(pred_interval_d),
+           sd = sd(pred_interval_d),
+           λ = abs(Difference - mean) / sd,
            p = ifelse(λ > sqrt(8 / 3), 4 / (9 * λ ^ 2), 1),
            Significance = symnum(p, corr = FALSE,
                                  cutpoints = c(0, 0.01, 0.05, 1),
@@ -148,9 +148,7 @@ starvation_enrichment = test_enrichment(starvation_diff)
 heatshock_enrichment = test_enrichment(heatshock_diff)
 
 interval_lines = function (data)
-    # WTF? R 3.3.0 doesn’t accept `data$pred_µ` nor ``data$`pred_µ```, but does
-    # accept `data$'pred_µ'`.
-    geom_hline(yintercept = first(data$'pred_µ') + λ_95 * c(1, -1) * first(data$'pred_σ'))
+    geom_hline(yintercept = first(data$mean) + lambda * c(1, -1) * first(data$sd))
 
 #+ starvation-enrichment, fig.width=20
 ggplot(starvation_enrichment) +
