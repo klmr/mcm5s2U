@@ -172,7 +172,11 @@ ggplot(heatshock_enrichment) +
 
 plot_summary = function (data) {
     data = data %>%
-        mutate(Codon = ifelse(Codon %in% mcm5s2U_codons, Codon, 'rest'))
+        mutate(Codon = ifelse(Interesting, Codon, 'rest')) %>%
+        # Alper wants this order of codons.
+        mutate(Codon = factor(Codon,
+                              levels = c('AAA', 'GAA', 'CAA', 'rest'),
+                              ordered = TRUE))
 
     ggplot(data) +
         aes(Codon, Difference) +
