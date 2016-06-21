@@ -138,6 +138,7 @@ test_enrichment = function (de_diff_d) {
     mutate(mean = mean(pred_interval_d),
            sd = sd(pred_interval_d),
            λ = abs(Difference - mean) / sd,
+           # FIXME: This isn’t a p-value! It’s the probability of H0.
            p = ifelse(λ > sqrt(8 / 3), 4 / (9 * λ ^ 2), 1),
            Significance = symnum(p, corr = FALSE,
                                  cutpoints = c(0, 0.01, 0.05, 1),
