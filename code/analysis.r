@@ -5,18 +5,9 @@ knitr::opts_chunk$set(dev = c('png', 'pdf'))
 io = modules::import('ebi-predocs/ebits/io')
 dplyr = modules::import_package('dplyr', attach = TRUE)
 tidyr = modules::import_package('tidyr')
-cu = modules::import('klmr/codons/codon_usage')
+cds_ = modules::import('./code/cds')
 
 dir.create('data', showWarnings = FALSE)
-
-valid_cds = function (cds) {
-    n = nchar(cds)
-    n > 0 &
-        cds != 'Sequence unavailable' &
-        n %% 3 == 0 &
-        substr(cds, 1, 3) == 'ATG' &
-        substr(cds, n - 2, n) %in% cu$stop_codons
-}
 
 load_counts = function (file) {
     data = io$read_table(file, header = TRUE, sep = ',', row.names = 1)
@@ -51,13 +42,13 @@ coding_sequences = cds %>%
     select(`Ensembl Gene ID`,
            Gene = `Associated Gene Name`,
            Sequence = `Coding sequence`) %>%
-    filter(valid_cds(Sequence)) %>%
+    filter(cds_$valid_cds(Sequence)) %>%
     group_by(Gene) %>%
     arrange(-nchar(Sequence)) %>%
     slice(1) %>%
     ungroup()
 
-cds_cu = cu$cu(coding_sequences)
+cds_cu = cds_$cu$cu(coding_sequences)
 
 aggregate_vsd = function (data)
     data %>%
