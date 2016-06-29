@@ -5,7 +5,7 @@ knitr::opts_chunk$set(dev = c('png', 'pdf'))
 io = modules::import('ebi-predocs/ebits/io')
 dplyr = modules::import_package('dplyr', attach = TRUE)
 tidyr = modules::import_package('tidyr')
-cds_ = modules::import('./code/cds')
+cds_ = modules::import('./cds')
 
 dir.create('data', showWarnings = FALSE)
 
