@@ -184,7 +184,8 @@ plot_summary = function (data) {
         geom_hline(aes(yintercept = Limit, color = Limits),
                    data = data_frame(Limit = mean + lambda * c(1, -1) * sd,
                                      Limits = '95% prediction interval'),
-                   linetype = 'dashed', show.legend = TRUE)
+                   linetype = 'dashed', show.legend = TRUE) +
+        coord_cartesian(ylim = c(-0.01, 0.01))
 }
 
 #+ starvation-enrichment-summary, fig.width = 6, fig.height = 4
