@@ -178,9 +178,9 @@ plot_summary = function (data) {
         aes(Codon, Difference) +
         geom_blank() +
         geom_bar(data = filter(data, Codon != 'rest'),
-                 stat = 'identity', position = 'dodge', width = 0.5) +
+                 stat = 'identity', position = 'dodge', width = 0.7) +
         geom_boxplot(data = filter(data, Codon == 'rest'),
-                     size = 1.2, width = 0.75) +
+                     size = 1.2, width = 0.8) +
         geom_hline(aes(yintercept = Limit, color = Limits),
                    data = data_frame(Limit = mean + lambda * c(1, -1) * sd,
                                      Limits = '95% prediction interval'),
