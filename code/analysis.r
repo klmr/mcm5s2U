@@ -185,6 +185,7 @@ plot_summary = function (data) {
                    data = data_frame(Limit = mean + lambda * c(1, -1) * sd,
                                      Limits = '95% prediction interval'),
                    linetype = 'dashed', show.legend = TRUE) +
+        scale_y_continuous(labels = scales::percent) +
         coord_cartesian(ylim = c(-0.01, 0.01))
 }
 
